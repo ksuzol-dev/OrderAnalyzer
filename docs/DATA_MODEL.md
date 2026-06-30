@@ -19,6 +19,11 @@
 | vip_id | VIP ID | VIP ID |
 | vip_name | VIP 名称 | VIP 名称 |
 | vip_type | VIP 类型 | VIP 类型 |
+| user_id | 用户 ID | 用户昵称(ID)、用户ID、会员ID、买家ID |
+| user_name | 用户名称 | 用户昵称、用户姓名、用户昵称(ID) |
+| user_phone | 用户手机号 | 用户手机号、手机号、手机号码 |
+| registration_time | 注册时间 | 用户注册时间、注册时间、账号注册时间 |
+| class_name | 班级 | 班级、班级名称、所属班级、用户班级 |
 
 ## 支付成功规则
 

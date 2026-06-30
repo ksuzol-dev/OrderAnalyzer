@@ -102,6 +102,11 @@ def render_data_check(raw_df, df, detected):
             "vip_id",
             "vip_name",
             "vip_type",
+            "user_id",
+            "user_name",
+            "user_phone",
+            "registration_time",
+            "class_name",
         ]
         available_columns = [column for column in standard_columns if column in df.columns]
         st.dataframe(df[available_columns].head(50), use_container_width=True, hide_index=True)

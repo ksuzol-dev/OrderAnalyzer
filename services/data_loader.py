@@ -14,6 +14,11 @@ FIELD_SPECS = {
     "VIP ID": ["VIP ID", "vip_id", "会员ID", "会员 ID"],
     "VIP 名称": ["VIP 名称", "vip_name"],
     "VIP 类型": ["VIP 类型", "vip_type"],
+    "用户ID": ["用户ID", "用户 ID", "会员ID", "会员 ID", "买家ID", "买家 ID", "用户昵称(ID)"],
+    "用户名称": ["用户名称", "用户姓名", "用户昵称", "用户昵称(ID)", "用户名", "姓名", "昵称"],
+    "用户手机号": ["用户手机号", "手机号", "手机号码", "用户手机", "联系电话"],
+    "注册时间": ["注册时间", "用户注册时间", "账号注册时间", "首次注册时间", "注册日期", "创建时间"],
+    "班级": ["班级", "班级名称", "所属班级", "用户班级", "班级用户", "课程班级"],
 }
 
 REQUIRED_FIELDS = ["SKU", "支付状态", "支付金额", "支付完成时间"]
@@ -23,6 +28,10 @@ OPTIONAL_DEFAULTS = {
     "VIP ID": "",
     "VIP 名称": "",
     "VIP 类型": "",
+    "用户ID": "",
+    "用户名称": "",
+    "用户手机号": "",
+    "班级": "未识别班级",
 }
 
 
@@ -90,4 +99,13 @@ def prepare_data(raw):
     df["vip_id"] = df["VIP ID"]
     df["vip_name"] = df["VIP 名称"].where(df["VIP 名称"].str.len() > 0, df["SKU"])
     df["vip_type"] = df["VIP 类型"]
+    df["user_id"] = df["用户ID"].where(df["用户ID"].str.len() > 0, df["vip_id"])
+    df["user_name"] = df["用户名称"]
+    df["user_phone"] = df["用户手机号"]
+    df["class_name"] = df["班级"]
+    if detected["注册时间"]:
+        df["注册时间"] = pd.to_datetime(df[detected["注册时间"]], errors="coerce")
+    else:
+        df["注册时间"] = pd.NaT
+    df["registration_time"] = df["注册时间"]
     return df, detected
