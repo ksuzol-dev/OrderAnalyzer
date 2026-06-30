@@ -18,6 +18,26 @@ def render_data_check(raw_df, df, detected):
     section("字段识别")
     st.json(detected)
 
+    section("标准字段预览")
+    standard_columns = [
+        "订单编号",
+        "SKU",
+        "支付金额",
+        "支付完成时间",
+        "来源平台",
+        "开通方式",
+        "VIP ID",
+        "VIP 名称",
+        "VIP 类型",
+        "source_platform",
+        "pay_type",
+        "vip_id",
+        "vip_name",
+        "vip_type",
+    ]
+    available_columns = [column for column in standard_columns if column in df.columns]
+    st.dataframe(df[available_columns].head(50), use_container_width=True, hide_index=True)
+
     section("原始字段")
     st.dataframe({"字段名": list(raw_df.columns)}, use_container_width=True, hide_index=True)
 

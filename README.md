@@ -15,7 +15,7 @@
 ## 启动方式
 
 ```bash
-cd ~/Documents/OrderAnalyzer/stable/OrderAnalyzer
+cd ~/Documents/OrderAnalyzer/develop/OrderAnalyzer
 pip3 install -r requirements.txt
 python3 -m streamlit run app.py
 ```
@@ -44,3 +44,18 @@ OrderAnalyzer/
 - 默认使用最新订单日期作为分析基准
 - 未选择 SKU 时分析全部 SKU
 - 不提交真实订单数据，CSV / Excel / zip 文件已加入 `.gitignore`
+
+## V0.3.1 新业务线字段
+
+新增标准字段：
+- `source_platform`：来源平台
+- `vip_id`：VIP ID
+- `vip_name`：VIP 名称
+- `vip_type`：VIP 类型
+- `pay_type`：开通方式
+
+新业务线映射：
+- VIP 名称 -> SKU
+- 开通价格 -> 支付金额
+- 开通时间 -> 支付完成时间
+- 支付状态 = 已支付 -> 支付成功订单
