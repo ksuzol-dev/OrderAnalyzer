@@ -1,6 +1,6 @@
 import streamlit as st
 
-from components.ui import inject_global_styles
+from components.ui import inject_global_styles, message_box, page_header
 from pages.order_pages.dashboard import render_dashboard
 from pages.order_pages.data_check import render_data_check
 from pages.order_pages.sku_analysis import render_sku_analysis
@@ -14,10 +14,11 @@ st.set_page_config(page_title="OrderAnalyzer 订单分析平台", page_icon="�
 inject_global_styles()
 
 
-st.markdown('<div class="main-title">📊 OrderAnalyzer 订单分析平台</div>', unsafe_allow_html=True)
-st.markdown(
-    '<div class="sub-title">本地运行 · 数据不上传服务器 · 只统计支付成功订单 · V0.3 Foundation</div>',
-    unsafe_allow_html=True,
+page_header(
+    "订单运营分析平台",
+    "导入订单 CSV / Excel 后，快速查看订单、收入、SKU、趋势和数据质量。",
+    eyebrow="OrderAnalyzer · V0.3.2 UI Foundation",
+    chips=["本地运行", "数据不上传服务器", "只统计支付成功订单"],
 )
 
 with st.sidebar:
@@ -32,9 +33,10 @@ with st.sidebar:
     )
 
 if not uploaded:
-    st.markdown(
-        '<div class="tip-box">请先在左侧上传订单 CSV / Excel。上传后会自动生成 Dashboard、趋势、SKU 和数据检查。</div>',
-        unsafe_allow_html=True,
+    message_box(
+        "请先在左侧上传订单 CSV / Excel。上传后会自动生成 Dashboard、趋势、SKU 和数据检查。",
+        title="等待导入数据",
+        variant="info",
     )
     st.stop()
 

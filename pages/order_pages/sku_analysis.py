@@ -3,7 +3,7 @@ from datetime import timedelta
 import plotly.express as px
 import streamlit as st
 
-from components.ui import fmt_money, fmt_percent, section
+from components.ui import fmt_money, fmt_percent, metric_card, section, style_chart
 from services.analytics import sku_summary
 
 
@@ -19,7 +19,8 @@ def _scope_df(df, latest_date, scope):
 
 def render_sku_analysis(df, context):
     latest_date = context["latest_date"]
-    scope = st.selectbox("分析口径", ["最新日期", "最近7天", "最近30天", "全部数据"], index=2)
+    with st.container(border=True):
+        scope = st.selectbox("分析口径", ["最新日期", "最近7天", "最近30天", "全部数据"], index=2)
     scoped = _scope_df(df, latest_date, scope)
     summary = sku_summary(scoped)
 
@@ -27,29 +28,42 @@ def render_sku_analysis(df, context):
         st.warning("当前口径下没有 SKU 数据。")
         return
 
-    c1, c2, c3 = st.columns(3)
+    revenue_top10 = summary.head(10)["收入"].sum()
+    concentration = revenue_top10 / summary["收入"].sum() * 100 if summary["收入"].sum() else 0
+
+    c1, c2, c3, c4 = st.columns(4)
     with c1:
-        st.metric("SKU 数量", f"{summary['SKU'].nunique():,}")
+        metric_card("SKU 数量", f"{summary['SKU'].nunique():,}", note=scope, accent="#2563eb")
     with c2:
-        st.metric("TOP1 收入占比", fmt_percent(summary.iloc[0]["收入占比"]))
+        metric_card("TOP1 收入占比", fmt_percent(summary.iloc[0]["收入占比"]), note=summary.iloc[0]["SKU"], accent="#f97316")
     with c3:
-        st.metric("TOP10 收入", fmt_money(summary.head(10)["收入"].sum()))
+        metric_card("TOP10 收入", fmt_money(revenue_top10), note="收入贡献", accent="#16a34a")
+    with c4:
+        metric_card("TOP10 集中度", fmt_percent(concentration), note="收入集中度", accent="#7c3aed")
 
-    section("SKU 订单数占比", "运营问题：订单主要集中在哪些 SKU，是否存在爆款依赖？")
-    order_chart = summary.sort_values("订单数", ascending=False).head(10)
-    fig_order = px.bar(order_chart, x="订单数占比", y="SKU", orientation="h", title=f"{scope} SKU 订单数占比 TOP10")
-    fig_order.update_layout(height=420, yaxis={"categoryorder": "total ascending"}, margin=dict(l=20, r=20, t=55, b=20))
-    st.plotly_chart(fig_order, use_container_width=True)
+    left, right = st.columns(2)
+    with left:
+        with st.container(border=True):
+            section("SKU 订单数占比", "运营问题：订单主要集中在哪些 SKU，是否存在爆款依赖？")
+            order_chart = summary.sort_values("订单数", ascending=False).head(10)
+            fig_order = px.bar(order_chart, x="订单数占比", y="SKU", orientation="h", title=f"{scope} SKU 订单数占比 TOP10")
+            fig_order.update_traces(marker_color="#2563eb")
+            fig_order.update_layout(yaxis={"categoryorder": "total ascending"}, xaxis_title="订单数占比", yaxis_title="")
+            st.plotly_chart(style_chart(fig_order, height=420), use_container_width=True)
 
-    section("SKU 收入占比", "运营问题：真正贡献收入的是哪些 SKU，和订单数排行是否一致？")
-    revenue_chart = summary.sort_values("收入", ascending=False).head(10)
-    fig_revenue = px.bar(revenue_chart, x="收入占比", y="SKU", orientation="h", title=f"{scope} SKU 收入占比 TOP10")
-    fig_revenue.update_layout(height=420, yaxis={"categoryorder": "total ascending"}, margin=dict(l=20, r=20, t=55, b=20))
-    st.plotly_chart(fig_revenue, use_container_width=True)
+    with right:
+        with st.container(border=True):
+            section("SKU 收入占比", "运营问题：真正贡献收入的是哪些 SKU，和订单数排行是否一致？")
+            revenue_chart = summary.sort_values("收入", ascending=False).head(10)
+            fig_revenue = px.bar(revenue_chart, x="收入占比", y="SKU", orientation="h", title=f"{scope} SKU 收入占比 TOP10")
+            fig_revenue.update_traces(marker_color="#16a34a")
+            fig_revenue.update_layout(yaxis={"categoryorder": "total ascending"}, xaxis_title="收入占比", yaxis_title="")
+            st.plotly_chart(style_chart(fig_revenue, height=420), use_container_width=True)
 
-    section("SKU TOP10 明细", "运营问题：TOP SKU 的订单数、收入和占比是否健康？")
-    table = summary.head(10).copy()
-    table["收入"] = table["收入"].map(fmt_money)
-    table["订单数占比"] = table["订单数占比"].map(fmt_percent)
-    table["收入占比"] = table["收入占比"].map(fmt_percent)
-    st.dataframe(table[["SKU", "订单数", "订单数占比", "收入", "收入占比"]], use_container_width=True, hide_index=True)
+    with st.container(border=True):
+        section("SKU TOP10 明细", "运营问题：TOP SKU 的订单数、收入和占比是否健康？")
+        table = summary.head(10).copy()
+        table["收入"] = table["收入"].map(fmt_money)
+        table["订单数占比"] = table["订单数占比"].map(fmt_percent)
+        table["收入占比"] = table["收入占比"].map(fmt_percent)
+        st.dataframe(table[["SKU", "订单数", "订单数占比", "收入", "收入占比"]], use_container_width=True, hide_index=True)
