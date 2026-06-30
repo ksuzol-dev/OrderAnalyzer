@@ -15,11 +15,21 @@
 
 ## 启动方式
 
+同事下载 ZIP 后，推荐直接双击：
+
+```text
+start.command
+```
+
+如果使用终端，需要先进入解压后的项目目录，例如：
+
 ```bash
-cd ~/Documents/OrderAnalyzer/develop/OrderAnalyzer
-pip3 install -r requirements.txt
+cd ~/Downloads/OrderAnalyzer-0.3.2
+python3 -m pip install -r requirements.txt
 python3 -m streamlit run app.py
 ```
+
+更多说明见 `docs/INSTALL.md`。
 
 ## 项目结构
 
