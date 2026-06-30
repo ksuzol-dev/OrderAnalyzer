@@ -5,6 +5,7 @@
 新增：
 - 用户分析页支持两类表格式自动识别
 - VIP / 来源平台视角：VIP ID 数量、来源平台分布、VIP 类型分布、来源平台 x VIP 类型交叉分析
+- VIP / 来源平台视角新增 VIP ID 占比分布，展示 TOP VIP ID、占比、饼图和明细表
 - 注册时间 / 班级用户视角：用户数、注册趋势、班级用户分布
 - 新增标准字段：`user_id`、`user_name`、`user_phone`、`registration_time`、`class_name`
 - 数据检查页标准字段预览增加用户字段

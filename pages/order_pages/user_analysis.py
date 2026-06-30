@@ -51,6 +51,43 @@ def _value_counts(df, column, missing_label, invalid_values=None):
     return counts
 
 
+def _add_share(counts):
+    total = counts["用户数"].sum() if "用户数" in counts.columns else 0
+    counts = counts.copy()
+    counts["占比"] = counts["用户数"] / total * 100 if total else 0
+    counts["占比显示"] = counts["占比"].map(lambda value: f"{value:.1f}%")
+    return counts
+
+
+def _render_vip_id_distribution(df):
+    if "vip_id" not in df.columns:
+        return
+    vip_id_df = _value_counts(df, "vip_id", "未识别 VIP ID", ["未识别 VIP ID"])
+    if vip_id_df.empty:
+        return
+    vip_id_df = _add_share(vip_id_df)
+    top_row = vip_id_df.iloc[0]
+
+    with st.container(border=True):
+        section("VIP ID 占比分布", "运营问题：用户主要集中在哪些 VIP ID，是否存在明显的权益层级集中？")
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            metric_card("TOP VIP ID", str(top_row["vip_id"]), note="用户数最高", accent="#16a34a")
+        with c2:
+            metric_card("TOP VIP ID 用户数", f"{int(top_row['用户数']):,}", note="当前筛选范围", accent="#2563eb")
+        with c3:
+            metric_card("TOP VIP ID 占比", top_row["占比显示"], note="按支付用户行数计算", accent="#f97316")
+
+        left, right = st.columns([1.2, 1])
+        with left:
+            fig = px.pie(vip_id_df, names="vip_id", values="用户数", title="VIP ID 用户占比", hole=0.42)
+            fig.update_traces(textposition="inside", textinfo="percent+label")
+            st.plotly_chart(style_chart(fig, height=380), use_container_width=True)
+        with right:
+            table = vip_id_df.rename(columns={"vip_id": "VIP ID"})
+            st.dataframe(table[["VIP ID", "用户数", "占比显示"]], use_container_width=True, hide_index=True)
+
+
 def _render_vip_source_analysis(df):
     section("VIP / 来源平台分析", "运营问题：用户主要来自哪些平台，不同 VIP 类型的用户结构是否健康？")
     vip_count = _valid_text(df["vip_id"]).nunique() if "vip_id" in df.columns else 0
@@ -68,6 +105,8 @@ def _render_vip_source_analysis(df):
         metric_card("VIP 类型数", f"{len(type_df):,}", note=f"TOP：{top_type}", accent="#7c3aed")
     with c4:
         metric_card("支付用户行数", f"{len(df):,}", note="当前筛选范围", accent="#f97316")
+
+    _render_vip_id_distribution(df)
 
     left, right = st.columns(2)
     with left:
