@@ -17,7 +17,7 @@ inject_global_styles()
 page_header(
     "订单运营分析平台",
     "导入订单 CSV / Excel 后，快速查看订单、收入、SKU、趋势和数据质量。",
-    eyebrow="OrderAnalyzer · V0.3.4 Product Line Filter",
+    eyebrow="OrderAnalyzer · V0.3.5 Product ID SKU",
     chips=["本地运行", "数据不上传服务器", "只统计支付成功订单"],
 )
 

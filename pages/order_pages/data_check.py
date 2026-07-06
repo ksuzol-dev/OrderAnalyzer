@@ -90,6 +90,8 @@ def render_data_check(raw_df, df, detected):
         standard_columns = [
             "订单编号",
             "产品线",
+            "商品ID",
+            "商品名",
             "SKU",
             "支付金额",
             "支付完成时间",
@@ -100,6 +102,8 @@ def render_data_check(raw_df, df, detected):
             "VIP 类型",
             "source_platform",
             "product_line",
+            "product_id",
+            "product_name",
             "pay_type",
             "vip_id",
             "vip_name",

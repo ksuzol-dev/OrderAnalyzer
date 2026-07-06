@@ -6,6 +6,7 @@ import pandas as pd
 FIELD_SPECS = {
     "订单编号": ["订单编号", "订单号", "Id", "ID"],
     "产品线": ["产品线", "产品线名称", "业务线", "业务线名称", "项目线"],
+    "商品ID": ["商品ID", "商品 ID", "商品编号", "商品编码", "sku_id", "SKU ID", "sku id"],
     "SKU": ["商品名", "SKU", "sku", "商品名称", "商品", "VIP 名称"],
     "支付状态": ["支付状态", "订单状态", "状态"],
     "支付金额": ["支付金额", "实付金额", "金额", "订单金额", "开通价格"],
@@ -43,6 +44,24 @@ def clean_money(value):
     text = str(value).replace(",", "")
     match = re.search(r"-?\d+(?:\.\d+)?", text)
     return float(match.group()) if match else 0.0
+
+
+def clean_id(value):
+    if pd.isna(value):
+        return ""
+    text = str(value).strip()
+    if re.fullmatch(r"\d+\.0", text):
+        return text[:-2]
+    return text
+
+
+def build_sku_label(name, product_id):
+    sku_name = str(name).strip() if not pd.isna(name) else ""
+    sku_name = sku_name or "未命名商品"
+    clean_product_id = clean_id(product_id)
+    if clean_product_id:
+        return f"{sku_name}（商品ID: {clean_product_id}）"
+    return sku_name
 
 
 def is_success(value):
@@ -88,7 +107,12 @@ def prepare_data(raw):
         df["订单编号"] = df[detected["订单编号"]].astype(str)
     else:
         df["订单编号"] = "ROW-" + df.index.astype(str)
-    df["SKU"] = df[detected["SKU"]].fillna("未命名商品").astype(str)
+    df["商品名"] = df[detected["SKU"]].fillna("未命名商品").astype(str)
+    if detected["商品ID"]:
+        df["商品ID"] = df[detected["商品ID"]].apply(clean_id)
+    else:
+        df["商品ID"] = ""
+    df["SKU"] = df.apply(lambda row: build_sku_label(row["商品名"], row["商品ID"]), axis=1)
     df["支付金额"] = df[detected["支付金额"]].apply(clean_money)
     df["支付完成时间"] = pd.to_datetime(df[detected["支付完成时间"]], errors="coerce")
     df = df.dropna(subset=["支付完成时间"])
@@ -98,6 +122,8 @@ def prepare_data(raw):
         df[field] = df[column].fillna(default).astype(str) if column else default
     df["source_platform"] = df["来源平台"]
     df["product_line"] = df["产品线"]
+    df["product_id"] = df["商品ID"]
+    df["product_name"] = df["商品名"]
     df["pay_type"] = df["开通方式"]
     df["vip_id"] = df["VIP ID"]
     df["vip_name"] = df["VIP 名称"].where(df["VIP 名称"].str.len() > 0, df["SKU"])
