@@ -54,6 +54,7 @@ OrderAnalyzer/
 - 支持 CSV / Excel
 - 默认使用最新订单日期作为分析基准
 - 未选择 SKU 时分析全部 SKU
+- 支持产品线筛选，适合同一订单文件包含多个产品线的场景
 - 不提交真实订单数据，CSV / Excel / zip 文件已加入 `.gitignore`
 
 ## V0.3.1 新业务线字段

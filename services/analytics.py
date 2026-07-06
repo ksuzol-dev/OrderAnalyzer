@@ -50,12 +50,15 @@ def pct_change(current, previous):
     return f"{sign}{pct:.1f}%", kind, pct
 
 
-def get_latest_context(daily, selected_skus):
+def get_latest_context(daily, selected_skus, selected_product_lines=None):
     latest_date = daily["日期"].max()
     prev_date = latest_date - timedelta(days=1)
     latest = day_stats(daily, latest_date)
     previous = day_stats(daily, prev_date)
-    target = "全部 SKU" if not selected_skus else "、".join(selected_skus[:3]) + (" 等" if len(selected_skus) > 3 else "")
+    product_lines = selected_product_lines or []
+    line_target = "全部产品线" if not product_lines else "、".join(product_lines[:3]) + (" 等" if len(product_lines) > 3 else "")
+    sku_target = "全部 SKU" if not selected_skus else "、".join(selected_skus[:3]) + (" 等" if len(selected_skus) > 3 else "")
+    target = f"{line_target} / {sku_target}"
     return {
         "latest_date": latest_date,
         "prev_date": prev_date,

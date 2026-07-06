@@ -89,6 +89,7 @@ def render_data_check(raw_df, df, detected):
         section("标准字段预览", "运营问题：进入看板的数据是否已经被正确标准化？")
         standard_columns = [
             "订单编号",
+            "产品线",
             "SKU",
             "支付金额",
             "支付完成时间",
@@ -98,6 +99,7 @@ def render_data_check(raw_df, df, detected):
             "VIP 名称",
             "VIP 类型",
             "source_platform",
+            "product_line",
             "pay_type",
             "vip_id",
             "vip_name",

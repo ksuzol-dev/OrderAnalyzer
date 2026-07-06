@@ -5,10 +5,11 @@ import pandas as pd
 
 FIELD_SPECS = {
     "订单编号": ["订单编号", "订单号", "Id", "ID"],
+    "产品线": ["产品线", "产品线名称", "业务线", "业务线名称", "项目线"],
     "SKU": ["商品名", "SKU", "sku", "商品名称", "商品", "VIP 名称"],
     "支付状态": ["支付状态", "订单状态", "状态"],
     "支付金额": ["支付金额", "实付金额", "金额", "订单金额", "开通价格"],
-    "支付完成时间": ["支付完成时间", "支付时间", "付款时间", "完成时间", "更新时间", "订单日期", "开通时间"],
+    "支付完成时间": ["支付完成时间", "支付完成时", "支付时间", "付款时间", "完成时间", "更新时间", "订单日期", "开通时间"],
     "来源平台": ["来源平台", "source_platform"],
     "开通方式": ["开通方式", "pay_type"],
     "VIP ID": ["VIP ID", "vip_id", "会员ID", "会员 ID"],
@@ -23,6 +24,7 @@ FIELD_SPECS = {
 
 REQUIRED_FIELDS = ["SKU", "支付状态", "支付金额", "支付完成时间"]
 OPTIONAL_DEFAULTS = {
+    "产品线": "未识别产品线",
     "来源平台": "未识别来源",
     "开通方式": "未识别方式",
     "VIP ID": "",
@@ -95,6 +97,7 @@ def prepare_data(raw):
         column = detected[field]
         df[field] = df[column].fillna(default).astype(str) if column else default
     df["source_platform"] = df["来源平台"]
+    df["product_line"] = df["产品线"]
     df["pay_type"] = df["开通方式"]
     df["vip_id"] = df["VIP ID"]
     df["vip_name"] = df["VIP 名称"].where(df["VIP 名称"].str.len() > 0, df["SKU"])

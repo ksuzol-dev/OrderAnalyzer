@@ -17,7 +17,7 @@ inject_global_styles()
 page_header(
     "订单运营分析平台",
     "导入订单 CSV / Excel 后，快速查看订单、收入、SKU、趋势和数据质量。",
-    eyebrow="OrderAnalyzer · V0.3.2 UI Foundation",
+    eyebrow="OrderAnalyzer · V0.3.4 Product Line Filter",
     chips=["本地运行", "数据不上传服务器", "只统计支付成功订单"],
 )
 
@@ -53,26 +53,32 @@ if df.empty:
 
 with st.sidebar:
     st.header("筛选")
-    sku_options = sorted(df["SKU"].dropna().unique().tolist())
+    product_line_options = sorted(df["产品线"].dropna().unique().tolist()) if "产品线" in df.columns else []
+    selected_product_lines = st.multiselect("产品线", product_line_options, default=[])
+    line_df = df[df["产品线"].isin(selected_product_lines)].copy() if selected_product_lines else df.copy()
+
+    sku_options = sorted(line_df["SKU"].dropna().unique().tolist())
     selected_skus = st.multiselect("SKU / 商品", sku_options, default=[])
+    if not selected_product_lines:
+        st.caption("未选择产品线时默认分析全部产品线。")
     if not selected_skus:
         st.caption("未选择时默认分析全部 SKU。")
 
-view_df = df[df["SKU"].isin(selected_skus)].copy() if selected_skus else df.copy()
+view_df = line_df[line_df["SKU"].isin(selected_skus)].copy() if selected_skus else line_df.copy()
 daily = build_daily(view_df)
 
 if daily.empty:
     st.warning("当前筛选条件下没有支付成功订单。")
     st.stop()
 
-context = get_latest_context(daily, selected_skus)
+context = get_latest_context(daily, selected_skus, selected_product_lines)
 
 if page == "Dashboard":
     render_dashboard(view_df, daily, context)
 elif page == "趋势分析":
     render_trend_analysis(daily, context)
 elif page == "SKU 分析":
-    render_sku_analysis(df, context)
+    render_sku_analysis(view_df, context)
 elif page == "用户分析":
     render_user_analysis(df, detected)
 elif page == "数据检查":
