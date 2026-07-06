@@ -88,6 +88,6 @@ elif page == "趋势分析":
 elif page == "SKU 分析":
     render_sku_analysis(view_df, context)
 elif page == "用户分析":
-    render_user_analysis(df, detected)
+    render_user_analysis(view_df, detected)
 elif page == "数据检查":
     render_data_check(raw_df, df, detected)
