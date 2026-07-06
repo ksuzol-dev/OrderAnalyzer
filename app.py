@@ -1,6 +1,6 @@
 import streamlit as st
 
-from components.ui import inject_global_styles, message_box, page_header
+from components.ui import fmt_date, inject_global_styles, message_box, page_header
 from pages.order_pages.dashboard import render_dashboard
 from pages.order_pages.data_check import render_data_check
 from pages.order_pages.sku_analysis import render_sku_analysis
@@ -17,7 +17,7 @@ inject_global_styles()
 page_header(
     "订单运营分析平台",
     "导入订单 CSV / Excel 后，快速查看订单、收入、SKU、趋势和数据质量。",
-    eyebrow="OrderAnalyzer · V0.3.7 Payment Interval",
+    eyebrow="OrderAnalyzer · V0.3.9 Date Filter",
     chips=["本地运行", "数据不上传服务器", "只统计支付成功订单"],
 )
 
@@ -53,9 +53,31 @@ if df.empty:
 
 with st.sidebar:
     st.header("筛选")
-    product_line_options = sorted(df["产品线"].dropna().unique().tolist()) if "产品线" in df.columns else []
+    available_dates = sorted(df["日期"].dropna().unique().tolist())
+    min_date = available_dates[0]
+    max_date = available_dates[-1]
+    selected_date_range = st.date_input("日期范围", value=(min_date, max_date), min_value=min_date, max_value=max_date)
+    if isinstance(selected_date_range, tuple):
+        if len(selected_date_range) < 2:
+            st.info("请选择完整的开始日期和结束日期。")
+            st.stop()
+        start_date, end_date = selected_date_range
+    else:
+        start_date = selected_date_range
+        end_date = selected_date_range
+    if start_date > end_date:
+        st.warning("开始日期不能晚于结束日期。")
+        st.stop()
+
+    date_df = df[(df["日期"] >= start_date) & (df["日期"] <= end_date)].copy()
+    if date_df.empty:
+        st.warning("当前日期范围内没有支付成功订单。")
+        st.stop()
+    st.caption(f"当前日期：{fmt_date(start_date)} 至 {fmt_date(end_date)}")
+
+    product_line_options = sorted(date_df["产品线"].dropna().unique().tolist()) if "产品线" in date_df.columns else []
     selected_product_lines = st.multiselect("产品线", product_line_options, default=[])
-    line_df = df[df["产品线"].isin(selected_product_lines)].copy() if selected_product_lines else df.copy()
+    line_df = date_df[date_df["产品线"].isin(selected_product_lines)].copy() if selected_product_lines else date_df.copy()
 
     sku_options_df = sku_summary(line_df)
     sku_options = sku_options_df["SKU"].tolist()
@@ -79,7 +101,7 @@ if daily.empty:
     st.stop()
 
 selected_sku_labels = [sku_labels.get(key, key) for key in selected_skus]
-context = get_latest_context(daily, selected_sku_labels, selected_product_lines)
+context = get_latest_context(daily, selected_sku_labels, selected_product_lines, (start_date, end_date))
 
 if page == "Dashboard":
     render_dashboard(view_df, daily, context)
