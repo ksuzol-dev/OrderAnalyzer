@@ -6,7 +6,7 @@ from pages.order_pages.data_check import render_data_check
 from pages.order_pages.sku_analysis import render_sku_analysis
 from pages.order_pages.trend_analysis import render_trend_analysis
 from pages.order_pages.user_analysis import render_user_analysis
-from services.analytics import build_daily, get_latest_context
+from services.analytics import build_daily, get_latest_context, sku_summary
 from services.data_loader import prepare_data, read_file
 
 
@@ -17,7 +17,7 @@ inject_global_styles()
 page_header(
     "订单运营分析平台",
     "导入订单 CSV / Excel 后，快速查看订单、收入、SKU、趋势和数据质量。",
-    eyebrow="OrderAnalyzer · V0.3.5 Product ID SKU",
+    eyebrow="OrderAnalyzer · V0.3.6 Product ID Core SKU",
     chips=["本地运行", "数据不上传服务器", "只统计支付成功订单"],
 )
 
@@ -57,8 +57,15 @@ with st.sidebar:
     selected_product_lines = st.multiselect("产品线", product_line_options, default=[])
     line_df = df[df["产品线"].isin(selected_product_lines)].copy() if selected_product_lines else df.copy()
 
-    sku_options = sorted(line_df["SKU"].dropna().unique().tolist())
-    selected_skus = st.multiselect("SKU / 商品", sku_options, default=[])
+    sku_options_df = sku_summary(line_df)
+    sku_options = sku_options_df["SKU"].tolist()
+    sku_labels = dict(zip(sku_options_df["SKU"], sku_options_df["SKU说明"]))
+    selected_skus = st.multiselect(
+        "商品ID / 商品名",
+        sku_options,
+        default=[],
+        format_func=lambda key: sku_labels.get(key, key),
+    )
     if not selected_product_lines:
         st.caption("未选择产品线时默认分析全部产品线。")
     if not selected_skus:
@@ -71,7 +78,8 @@ if daily.empty:
     st.warning("当前筛选条件下没有支付成功订单。")
     st.stop()
 
-context = get_latest_context(daily, selected_skus, selected_product_lines)
+selected_sku_labels = [sku_labels.get(key, key) for key in selected_skus]
+context = get_latest_context(daily, selected_sku_labels, selected_product_lines)
 
 if page == "Dashboard":
     render_dashboard(view_df, daily, context)

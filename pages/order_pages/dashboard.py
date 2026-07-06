@@ -2,7 +2,7 @@ import plotly.express as px
 import streamlit as st
 
 from components.ui import fmt_date, fmt_money, fmt_percent, message_box, metric_card, section, style_chart
-from services.analytics import build_trend_window, pct_change
+from services.analytics import build_trend_window, pct_change, sku_summary
 
 
 def render_dashboard(df, daily, context):
@@ -15,9 +15,8 @@ def render_dashboard(df, daily, context):
     revenue_delta, revenue_kind, _ = pct_change(latest["收入"], previous["收入"])
     order_total = int(daily["订单数"].sum())
     revenue_total = float(daily["收入"].sum())
-    top_sku = df.groupby("SKU").agg(订单数=("订单编号", "nunique"), 收入=("支付金额", "sum")).reset_index()
-    top_sku = top_sku.sort_values(["收入", "订单数"], ascending=False)
-    top_sku_name = top_sku.iloc[0]["SKU"] if not top_sku.empty else "-"
+    top_sku = sku_summary(df)
+    top_sku_name = top_sku.iloc[0]["SKU说明"] if not top_sku.empty else "-"
     top_sku_share = top_sku.iloc[0]["收入"] / revenue_total * 100 if revenue_total else 0
 
     st.markdown(
@@ -33,7 +32,7 @@ def render_dashboard(df, daily, context):
     with c3:
         metric_card("客单价", fmt_money(latest["客单价"]), delta=f"较前一日 {aov_delta}", delta_kind=aov_kind, accent="#7c3aed")
     with c4:
-        metric_card("支付成功 SKU", f"{df['SKU'].nunique():,} 个", note=f"累计 {order_total:,} 单", accent="#f97316")
+        metric_card("支付成功 SKU", f"{df['SKU'].nunique():,} 个", note=f"按商品 ID 统计，累计 {order_total:,} 单", accent="#f97316")
 
     message_box(
         f"{fmt_date(latest_date)}，{target} 支付成功订单 {latest['订单数']} 单，收入 {fmt_money(latest['收入'])}，"

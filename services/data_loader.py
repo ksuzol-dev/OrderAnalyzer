@@ -55,13 +55,22 @@ def clean_id(value):
     return text
 
 
+def build_sku_key(name, product_id):
+    sku_name = str(name).strip() if not pd.isna(name) else ""
+    sku_name = sku_name or "未命名商品"
+    clean_product_id = clean_id(product_id)
+    if clean_product_id:
+        return f"商品ID: {clean_product_id}"
+    return f"未识别商品ID: {sku_name}"
+
+
 def build_sku_label(name, product_id):
     sku_name = str(name).strip() if not pd.isna(name) else ""
     sku_name = sku_name or "未命名商品"
     clean_product_id = clean_id(product_id)
     if clean_product_id:
-        return f"{sku_name}（商品ID: {clean_product_id}）"
-    return sku_name
+        return f"{clean_product_id}｜{sku_name}"
+    return f"未识别商品ID｜{sku_name}"
 
 
 def is_success(value):
@@ -112,7 +121,8 @@ def prepare_data(raw):
         df["商品ID"] = df[detected["商品ID"]].apply(clean_id)
     else:
         df["商品ID"] = ""
-    df["SKU"] = df.apply(lambda row: build_sku_label(row["商品名"], row["商品ID"]), axis=1)
+    df["SKU"] = df.apply(lambda row: build_sku_key(row["商品名"], row["商品ID"]), axis=1)
+    df["SKU说明"] = df.apply(lambda row: build_sku_label(row["商品名"], row["商品ID"]), axis=1)
     df["支付金额"] = df[detected["支付金额"]].apply(clean_money)
     df["支付完成时间"] = pd.to_datetime(df[detected["支付完成时间"]], errors="coerce")
     df = df.dropna(subset=["支付完成时间"])
@@ -124,6 +134,8 @@ def prepare_data(raw):
     df["product_line"] = df["产品线"]
     df["product_id"] = df["商品ID"]
     df["product_name"] = df["商品名"]
+    df["sku_key"] = df["SKU"]
+    df["sku_label"] = df["SKU说明"]
     df["pay_type"] = df["开通方式"]
     df["vip_id"] = df["VIP ID"]
     df["vip_name"] = df["VIP 名称"].where(df["VIP 名称"].str.len() > 0, df["SKU"])

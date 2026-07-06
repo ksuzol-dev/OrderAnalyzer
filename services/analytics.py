@@ -70,12 +70,32 @@ def get_latest_context(daily, selected_skus, selected_product_lines=None):
 
 def sku_summary(df):
     if df.empty:
-        return pd.DataFrame(columns=["SKU", "订单数", "收入", "订单数占比", "收入占比"])
+        return pd.DataFrame(columns=["SKU", "商品ID", "商品名", "SKU说明", "订单数", "收入", "订单数占比", "收入占比"])
+
+    def unique_names(series):
+        names = [str(value).strip() for value in series.dropna().tolist() if str(value).strip()]
+        unique = list(dict.fromkeys(names))
+        return " / ".join(unique[:3]) + (" 等" if len(unique) > 3 else "")
+
+    grouped_columns = {"订单数": ("订单编号", "nunique"), "收入": ("支付金额", "sum")}
+    if "商品ID" in df.columns:
+        grouped_columns["商品ID"] = ("商品ID", "first")
+    if "商品名" in df.columns:
+        grouped_columns["商品名"] = ("商品名", unique_names)
+
     summary = (
         df.groupby("SKU")
-        .agg(订单数=("订单编号", "nunique"), 收入=("支付金额", "sum"))
+        .agg(**grouped_columns)
         .reset_index()
         .sort_values(["收入", "订单数"], ascending=False)
+    )
+    if "商品ID" not in summary.columns:
+        summary["商品ID"] = ""
+    if "商品名" not in summary.columns:
+        summary["商品名"] = summary["SKU"]
+    summary["SKU说明"] = summary.apply(
+        lambda row: f"{row['商品ID']}｜{row['商品名']}" if str(row["商品ID"]).strip() else f"未识别商品ID｜{row['商品名']}",
+        axis=1,
     )
     order_total = summary["订单数"].sum()
     revenue_total = summary["收入"].sum()
