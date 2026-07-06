@@ -11,6 +11,7 @@ FIELD_SPECS = {
     "支付状态": ["支付状态", "订单状态", "状态"],
     "支付金额": ["支付金额", "实付金额", "金额", "订单金额", "开通价格"],
     "支付完成时间": ["支付完成时间", "支付完成时", "支付时间", "付款时间", "完成时间", "更新时间", "订单日期", "开通时间"],
+    "支付间隔": ["支付间隔", "支付间隔时间", "支付间隔天数", "付款间隔", "付款间隔时间"],
     "来源平台": ["来源平台", "source_platform"],
     "开通方式": ["开通方式", "pay_type"],
     "VIP ID": ["VIP ID", "vip_id", "会员ID", "会员 ID"],
@@ -53,6 +54,16 @@ def clean_id(value):
     if re.fullmatch(r"\d+\.0", text):
         return text[:-2]
     return text
+
+
+def clean_days(value):
+    if pd.isna(value):
+        return pd.NA
+    text = str(value).strip().replace(",", "")
+    match = re.search(r"-?\d+(?:\.\d+)?", text)
+    if not match:
+        return pd.NA
+    return int(float(match.group()))
 
 
 def build_sku_key(name, product_id):
@@ -127,6 +138,15 @@ def prepare_data(raw):
     df["支付完成时间"] = pd.to_datetime(df[detected["支付完成时间"]], errors="coerce")
     df = df.dropna(subset=["支付完成时间"])
     df["日期"] = df["支付完成时间"].dt.date
+    if detected["注册时间"]:
+        df["注册时间"] = pd.to_datetime(df[detected["注册时间"]], errors="coerce")
+    else:
+        df["注册时间"] = pd.NaT
+    if detected["支付间隔"]:
+        df["支付间隔天数"] = df[detected["支付间隔"]].apply(clean_days)
+    else:
+        interval = (df["支付完成时间"] - df["注册时间"]).dt.days
+        df["支付间隔天数"] = interval.where(df["注册时间"].notna(), pd.NA)
     for field, default in OPTIONAL_DEFAULTS.items():
         column = detected[field]
         df[field] = df[column].fillna(default).astype(str) if column else default
@@ -144,9 +164,6 @@ def prepare_data(raw):
     df["user_name"] = df["用户名称"]
     df["user_phone"] = df["用户手机号"]
     df["class_name"] = df["班级"]
-    if detected["注册时间"]:
-        df["注册时间"] = pd.to_datetime(df[detected["注册时间"]], errors="coerce")
-    else:
-        df["注册时间"] = pd.NaT
     df["registration_time"] = df["注册时间"]
+    df["payment_interval_days"] = df["支付间隔天数"]
     return df, detected

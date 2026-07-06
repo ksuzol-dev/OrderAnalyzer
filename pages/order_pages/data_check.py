@@ -96,6 +96,7 @@ def render_data_check(raw_df, df, detected):
             "SKU说明",
             "支付金额",
             "支付完成时间",
+            "支付间隔天数",
             "来源平台",
             "开通方式",
             "VIP ID",
@@ -115,6 +116,7 @@ def render_data_check(raw_df, df, detected):
             "user_name",
             "user_phone",
             "registration_time",
+            "payment_interval_days",
             "class_name",
         ]
         available_columns = [column for column in standard_columns if column in df.columns]

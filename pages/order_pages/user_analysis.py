@@ -40,6 +40,12 @@ def _has_class_registration_view(df):
     return registration_count > 0 or class_count > 0
 
 
+def _has_payment_interval_view(df):
+    if "payment_interval_days" not in df.columns:
+        return False
+    return df["payment_interval_days"].notna().sum() > 0
+
+
 def _value_counts(df, column, missing_label, invalid_values=None):
     if column not in df.columns:
         return pd.DataFrame(columns=[column, "用户数"])
@@ -184,6 +190,119 @@ def _render_class_registration_analysis(df):
         st.dataframe(class_df, use_container_width=True, hide_index=True)
 
 
+def _parse_interval_edges(raw_text):
+    numbers = []
+    for item in raw_text.replace("，", ",").split(","):
+        item = item.strip()
+        if not item:
+            continue
+        try:
+            value = int(float(item))
+        except ValueError:
+            continue
+        if value > 0:
+            numbers.append(value)
+    return sorted(set(numbers))
+
+
+def _bucket_label(value, edges):
+    if pd.isna(value):
+        return "未识别"
+    days = int(value)
+    previous = 0
+    for edge in edges:
+        if days <= edge:
+            if previous == 0:
+                return f"{edge}天内"
+            return f"{previous + 1}-{edge}天"
+        previous = edge
+    return f"{previous + 1}天以上"
+
+
+def _render_payment_interval_analysis(df):
+    section("支付间隔分析", "运营问题：表格里的支付间隔主要集中在哪些周期？")
+    interval_df = df[df["payment_interval_days"].notna()].copy()
+    interval_df["payment_interval_days"] = interval_df["payment_interval_days"].astype(int)
+    user_count, user_key = _unique_user_count(interval_df)
+
+    with st.container(border=True):
+        raw_edges = st.text_input("支付间隔分桶边界（天）", value="3,7,30,90,180,365")
+        edges = _parse_interval_edges(raw_edges)
+        if not edges:
+            edges = [3, 7, 30, 90, 180, 365]
+            st.warning("分桶边界未识别，已使用默认区间。")
+        st.caption("优先使用上传表格里的“支付间隔”字段。默认区间：3天内、4-7天、8-30天、31-90天、91-180天、181-365天、366天以上。修改边界后会自动重算。")
+
+    interval_df["支付间隔分组"] = interval_df["payment_interval_days"].map(lambda value: _bucket_label(value, edges))
+    bucket_order = [_bucket_label(edge, edges) for edge in edges] + [f"{edges[-1] + 1}天以上"]
+    interval_df["支付间隔分组"] = pd.Categorical(interval_df["支付间隔分组"], categories=bucket_order, ordered=True)
+
+    bucket = (
+        interval_df.groupby("支付间隔分组", observed=False)
+        .agg(支付记录数=("订单编号", "nunique"), 用户数=(user_key, "nunique"), 平均间隔天数=("payment_interval_days", "mean"))
+        .reset_index()
+    )
+    bucket = bucket[bucket["支付记录数"] > 0].copy()
+    total_orders = bucket["支付记录数"].sum()
+    bucket["支付记录占比"] = bucket["支付记录数"] / total_orders * 100 if total_orders else 0
+    bucket["支付记录占比显示"] = bucket["支付记录占比"].map(lambda value: f"{value:.1f}%")
+    bucket["平均间隔天数"] = bucket["平均间隔天数"].round(1)
+    top_bucket = bucket.sort_values("支付记录数", ascending=False).iloc[0]["支付间隔分组"] if not bucket.empty else "-"
+
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        metric_card("可分析支付记录", f"{len(interval_df):,}", note="已识别支付间隔", accent="#2563eb")
+    with c2:
+        metric_card("用户数", f"{user_count:,}", note=f"按 {user_key} 去重", accent="#16a34a")
+    with c3:
+        median_days = interval_df["payment_interval_days"].median()
+        metric_card("中位支付间隔", f"{median_days:.0f} 天", note="抗极值影响", accent="#7c3aed")
+    with c4:
+        metric_card("最高分布区间", str(top_bucket), note="支付记录最多", accent="#f97316")
+
+    left, right = st.columns([1.2, 1])
+    with left:
+        with st.container(border=True):
+            section("支付间隔分布", "运营问题：支付记录主要落在哪些间隔区间？")
+            fig = px.bar(bucket, x="支付间隔分组", y="支付记录数", title="支付间隔分布")
+            fig.update_traces(marker_color="#2563eb")
+            fig.update_layout(xaxis_title="支付间隔", yaxis_title="支付记录数")
+            st.plotly_chart(style_chart(fig, height=360), use_container_width=True)
+    with right:
+        with st.container(border=True):
+            section("区间明细", "运营问题：各间隔区间的支付记录和用户规模分别是多少？")
+            st.dataframe(
+                bucket[["支付间隔分组", "支付记录数", "支付记录占比显示", "用户数", "平均间隔天数"]].rename(
+                    columns={"支付记录占比显示": "支付记录占比"}
+                ),
+                use_container_width=True,
+                hide_index=True,
+            )
+
+    with st.container(border=True):
+        section("支付间隔用户明细", "运营问题：具体哪些用户或订单落在对应支付间隔区间？")
+        detail_columns = [
+            "订单编号",
+            "user_id",
+            "user_name",
+            "user_phone",
+            "product_line",
+            "SKU说明",
+            "支付金额",
+            "支付完成时间",
+            "registration_time",
+            "payment_interval_days",
+            "支付间隔分组",
+        ]
+        available = [column for column in detail_columns if column in interval_df.columns]
+        detail = interval_df[available].sort_values("payment_interval_days").copy()
+        if "支付完成时间" in detail.columns:
+            detail["支付完成时间"] = detail["支付完成时间"].astype(str)
+        if "registration_time" in detail.columns:
+            detail["registration_time"] = detail["registration_time"].astype(str).replace("NaT", "")
+        st.dataframe(detail, use_container_width=True, hide_index=True)
+
+
 def _render_user_detail(df):
     with st.container(border=True):
         section("用户明细预览", "运营问题：标准化后的用户字段是否符合预期？")
@@ -199,6 +318,7 @@ def _render_user_detail(df):
             "user_name",
             "user_phone",
             "registration_time",
+            "payment_interval_days",
             "class_name",
             "支付金额",
             "支付完成时间",
@@ -211,12 +331,15 @@ def _render_user_detail(df):
 
 
 def render_user_analysis(df, detected):
-    user_like_columns = [column for column in df.columns if any(key in str(column) for key in ["用户", "客户", "买家", "手机号", "会员", "VIP", "班级", "注册"])]
+    user_like_columns = [column for column in df.columns if any(key in str(column) for key in ["用户", "客户", "买家", "手机号", "会员", "VIP", "班级", "注册", "支付间隔"])]
     has_vip_source = _has_vip_source_view(df)
     has_class_registration = _has_class_registration_view(df)
+    has_payment_interval = _has_payment_interval_view(df)
 
-    section("用户分析", "运营问题：根据当前表格式，拆分查看 VIP/来源平台或注册时间/班级用户。")
+    section("用户分析", "运营问题：根据当前表格式，拆分查看支付间隔、VIP/来源平台或注册时间/班级用户。")
     mode_labels = []
+    if has_payment_interval:
+        mode_labels.append("支付间隔")
     if has_vip_source:
         mode_labels.append("VIP / 来源平台")
     if has_class_registration:
@@ -226,7 +349,9 @@ def render_user_analysis(df, detected):
 
     selected_mode = st.segmented_control("用户分析视角", mode_labels, default=mode_labels[0])
 
-    if selected_mode == "VIP / 来源平台":
+    if selected_mode == "支付间隔":
+        _render_payment_interval_analysis(df)
+    elif selected_mode == "VIP / 来源平台":
         _render_vip_source_analysis(df)
     elif selected_mode == "注册时间 / 班级用户":
         _render_class_registration_analysis(df)
