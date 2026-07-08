@@ -17,7 +17,7 @@ inject_global_styles()
 page_header(
     "订单运营分析平台",
     "导入订单 CSV / Excel 后，快速查看订单、收入、SKU、趋势和数据质量。",
-    eyebrow="OrderAnalyzer · V0.3.9 Date Filter",
+    eyebrow="OrderAnalyzer · V0.3.10 SKU Selection & Summary",
     chips=["本地运行", "数据不上传服务器", "只统计支付成功订单"],
 )
 
@@ -79,14 +79,25 @@ with st.sidebar:
     selected_product_lines = st.multiselect("产品线", product_line_options, default=[])
     line_df = date_df[date_df["产品线"].isin(selected_product_lines)].copy() if selected_product_lines else date_df.copy()
 
+    all_sku_options_df = sku_summary(df)
+    all_sku_labels = dict(zip(all_sku_options_df["SKU"], all_sku_options_df["SKU说明"]))
+    all_sku_keys = set(all_sku_options_df["SKU"].tolist())
+    if "selected_skus" in st.session_state:
+        st.session_state.selected_skus = [key for key in st.session_state.selected_skus if key in all_sku_keys]
+
     sku_options_df = sku_summary(line_df)
-    sku_options = sku_options_df["SKU"].tolist()
-    sku_labels = dict(zip(sku_options_df["SKU"], sku_options_df["SKU说明"]))
+    current_sku_options = sku_options_df["SKU"].tolist()
+    retained_sku_options = [
+        key for key in st.session_state.get("selected_skus", []) if key not in current_sku_options and key in all_sku_keys
+    ]
+    sku_options = current_sku_options + retained_sku_options
+    sku_labels = {**all_sku_labels, **dict(zip(sku_options_df["SKU"], sku_options_df["SKU说明"]))}
     selected_skus = st.multiselect(
         "商品ID / 商品名",
         sku_options,
         default=[],
         format_func=lambda key: sku_labels.get(key, key),
+        key="selected_skus",
     )
     if not selected_product_lines:
         st.caption("未选择产品线时默认分析全部产品线。")
@@ -108,7 +119,7 @@ if page == "Dashboard":
 elif page == "趋势分析":
     render_trend_analysis(daily, context)
 elif page == "SKU 分析":
-    render_sku_analysis(view_df, context)
+    render_sku_analysis(view_df, context, baseline_df=line_df)
 elif page == "用户分析":
     render_user_analysis(view_df, detected)
 elif page == "数据检查":
