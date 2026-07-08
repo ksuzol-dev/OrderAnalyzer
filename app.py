@@ -1,6 +1,7 @@
 import streamlit as st
 
 from components.ui import fmt_date, inject_global_styles, message_box, page_header
+from pages.order_pages.ab_test_analysis import render_ab_test_analysis
 from pages.order_pages.dashboard import render_dashboard
 from pages.order_pages.data_check import render_data_check
 from pages.order_pages.sku_analysis import render_sku_analysis
@@ -16,8 +17,8 @@ inject_global_styles()
 
 page_header(
     "订单运营分析平台",
-    "导入订单 CSV / Excel 后，快速查看订单、收入、SKU、趋势和数据质量。",
-    eyebrow="OrderAnalyzer · V0.3.10 SKU Selection & Summary",
+    "导入订单 CSV / Excel 后，快速查看订单、收入、SKU、趋势、AB 测试和数据质量。",
+    eyebrow="OrderAnalyzer · V0.3.11 AB Test Analysis",
     chips=["本地运行", "数据不上传服务器", "只统计支付成功订单"],
 )
 
@@ -28,7 +29,7 @@ with st.sidebar:
     st.divider()
     page = st.radio(
         "页面",
-        ["Dashboard", "趋势分析", "SKU 分析", "用户分析", "数据检查"],
+        ["Dashboard", "趋势分析", "SKU 分析", "AB 测试", "用户分析", "数据检查"],
         label_visibility="collapsed",
     )
 
@@ -120,6 +121,8 @@ elif page == "趋势分析":
     render_trend_analysis(daily, context)
 elif page == "SKU 分析":
     render_sku_analysis(view_df, context, baseline_df=line_df)
+elif page == "AB 测试":
+    render_ab_test_analysis(view_df, context)
 elif page == "用户分析":
     render_user_analysis(view_df, detected)
 elif page == "数据检查":
